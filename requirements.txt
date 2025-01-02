@@ -1,5 +1,4 @@
-discord.py==1.7.3
 streamlit
 requests
-tweepy
 pillow
+discord.py
