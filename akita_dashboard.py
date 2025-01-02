@@ -55,7 +55,7 @@ if image:
     # Field positions and spacing
     x_right_ticker = image.width * 0.85
     x_right_price = image.width * 0.81
-    x_right_change = image.width * 0.83
+    x_right_change = image.width * 0.86
 
     y_logo_bottom = 150
     y_fields_top = y_logo_bottom + 20
@@ -87,6 +87,7 @@ if image:
 
     # Display updated image
     st.image(image, caption="Updated Action Card", use_container_width=True)
+
 
       
 
