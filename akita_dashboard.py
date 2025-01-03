@@ -45,7 +45,7 @@ if price_data:
 if image:
     # Prepare drawing
     draw = ImageDraw.Draw(image)
-    font_path = "arial.ttf"  # Replace with a valid .ttf font file path if available
+    font_path = "./arial.ttf"  # Replace with a valid .ttf font file path if available
     font_large = ImageFont.truetype(font_path, 60)
     font_medium = ImageFont.truetype(font_path, 40)
 
