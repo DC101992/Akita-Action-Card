@@ -45,12 +45,12 @@ if price_data:
 if image:
     # Prepare drawing
     draw = ImageDraw.Draw(image)
-    font_path = "./fonts/arial.ttf"  # Relative path to the bundled font file
+    font_path = "arial"  # Relative path to the bundled font file
     try:
         font_large = ImageFont.truetype(font_path, 60)  # Larger font for ticker and price
         font_medium = ImageFont.truetype(font_path, 40)  # Medium font for 24hr change
     except OSError:
-        st.error("Font file not found. Ensure './fonts/arial.ttf' is in the repository.")
+        st.error("Font file not found. Ensure 'arial' is in the repository.")
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
 
