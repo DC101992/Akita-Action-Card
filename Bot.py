@@ -22,4 +22,4 @@ async def action_card(ctx):
     await ctx.respond("Here's the Action Card for Akita Dashboard!")
 
 # Run the bot
-bot.run(DISCORD_BOT_TOKEN)
+bot.run(MTMyNTE0MTI0MTM1NjA5NTU5MQ.GACdLT.7hFio89b0cjjn3vdJ76DG1POoePkcEHo3osNdo)
