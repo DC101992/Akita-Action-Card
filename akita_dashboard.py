@@ -29,7 +29,7 @@ def calculate_24hr_change(data):
     return round(price_change, 2)
 
 # Define paths and URLs
-image_path = "akita_action_card.jpg"  # Relative path for the image
+image_path = "C:\\Users\\taggm\\OneDrive\\Desktop\\akita action card\\akita action card.jpg"
 api_url = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 
 # Streamlit layout
@@ -45,14 +45,10 @@ if price_data:
 if image:
     # Prepare drawing
     draw = ImageDraw.Draw(image)
-    font_path = "arial"  # Relative path to the bundled font file
-    try:
-        font_large = ImageFont.truetype(font_path, 60)  # Larger font for ticker and price
-        font_medium = ImageFont.truetype(font_path, 40)  # Medium font for 24hr change
-    except OSError:
-        st.error("Font file not found. Ensure 'arial' is in the repository.")
-        font_large = ImageFont.load_default()
-        font_medium = ImageFont.load_default()
+    font_path = "./arial.ttf"  # Use the corrected file extension
+    font_large = ImageFont.truetype(font_path, 60)  # Larger font for ticker and price
+    font_medium = ImageFont.truetype(font_path, 40)  # Medium font for price change
+    font_small = ImageFont.load_default()
 
     # Field Positions (Move text further to the right)
     x_right_ticker = image.width * 0.85  # Move ticker field further right (adjust multiplier)
