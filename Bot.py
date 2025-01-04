@@ -1,17 +1,28 @@
 import discord
+from discord.ext import commands
+from dotenv import load_dotenv
 import os
 
-# Ensure intents are configured properly
+# Load environment variables
+load_dotenv()
+DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+APPLICATION_ID = '1325141241356095591'  # Your Bot Application ID
+PUBLIC_KEY = '316f8e8fc9a48ed82f4b2f9992f6ebebec6760cd42d2dd960451e873ea53c3d9'  # Your Bot Public Key
+
+# Set up bot with commands
 intents = discord.Intents.default()
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
-# Simplified event when the bot is ready
-@client.event
+@bot.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
+    print(f"We have logged in as {bot.user}")
 
-# Ensure you keep your Discord Bot Token secure, either via .env or an environment variable
-DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN', 'YOUR_BOT_TOKEN')
+@bot.slash_command(name="action_card", description="Display the Action Card")
+async def action_card(interaction: discord.Interaction):
+    await interaction.response.send_message("Here is the action card!", ephemeral=False)
 
-# Running the bot
-client.run(DISCORD_BOT_TOKEN)
+# Run bot
+if DISCORD_BOT_TOKEN:
+    bot.run(DISCORD_BOT_TOKEN)
+else:
+    print("Error: Bot token not found!")
