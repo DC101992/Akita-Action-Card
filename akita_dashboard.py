@@ -29,7 +29,7 @@ def calculate_24hr_change(data):
     return round(price_change, 2)
 
 # Define paths and URLs
-image_path = "C:\\Users\\taggm\\OneDrive\\Desktop\\akita action card\\akita action card.jpg"
+image_path = "./akita action card.jpg"  # Adjusted to a relative path
 api_url = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 
 # Streamlit layout
