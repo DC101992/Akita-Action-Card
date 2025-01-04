@@ -34,7 +34,7 @@ api_url = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 
 # Streamlit layout
 st.title("Akita Dashboard")
-st.header("Action Card Preview")
+
 
 image = load_image(image_path)
 price_data = fetch_price_data(api_url)
