@@ -1,0 +1,10 @@
+services:
+  - type: web  # Define the service type as web
+    name: akita-action-card
+    env: python  # Specify the environment type (Python)
+    buildCommand: "pip install -r requirements.txt"  # Install dependencies
+    startCommand: "python bot.py"  # Run your bot script
+    plan: free  # Use Render's free plan (if applicable)
+    envVars:
+      - key: DISCORD_BOT_TOKEN  # Environment variable for bot token
+        sync: false
