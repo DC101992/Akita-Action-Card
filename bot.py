@@ -32,12 +32,16 @@ async def on_ready():
 @bot.slash_command(name="action_card", description="Displays the action card for Akita Dashboard")
 async def action_card(ctx: nextcord.Interaction):
     await ctx.response.defer()  # Defer to give time for processing
-    
+
     # Load image
     if not os.path.exists(IMAGE_PATH):
         await ctx.send("Image file not found.")
         return
-    image = Image.open(IMAGE_PATH)
+    try:
+        image = Image.open(IMAGE_PATH)
+    except Exception as e:
+        await ctx.send(f"Error loading image: {e}")
+        return
 
     # Fetch price data
     try:
@@ -53,35 +57,34 @@ async def action_card(ctx: nextcord.Interaction):
         return
 
     # Draw on the image
-    draw = ImageDraw.Draw(image)
-    font_large = ImageFont.truetype(FONT_PATH, 60)
-    font_medium = ImageFont.truetype(FONT_PATH, 40)
+    try:
+        draw = ImageDraw.Draw(image)
+        font_large = ImageFont.truetype(FONT_PATH, 60)
+        font_medium = ImageFont.truetype(FONT_PATH, 40)
 
-    # Field Positions to match Streamlit layout
-    x_right_ticker = image.width * 0.85  # Move ticker field slightly right
-    x_right_price = image.width * 0.81   # Align price field
-    x_right_change = image.width * 0.83  # Align change field
+        x_right_ticker = image.width * 0.85
+        x_right_price = image.width * 0.81
+        x_right_change = image.width * 0.83
 
-    y_logo_bottom = 150  # Matches Streamlit logo position
-    y_fields_top = y_logo_bottom + 20  # Fields just below logo
-    field_spacing = 40  # Matches vertical spacing in Streamlit
+        y_logo_bottom = 150
+        y_fields_top = y_logo_bottom + 20
+        field_spacing = 40
 
-    # Ticker ($AKTA)
-    ticker_text = "$AKTA"
-    ticker_bbox = draw.textbbox((0, 0), ticker_text, font=font_large)
-    ticker_width = ticker_bbox[2] - ticker_bbox[0]
-    ticker_height = ticker_bbox[3] - ticker_bbox[1]
-    draw.text((x_right_ticker - ticker_width // 2, y_fields_top), ticker_text, fill="white", font=font_large)
+        # Ticker ($AKTA)
+        ticker_text = "$AKTA"
+        ticker_bbox = draw.textbbox((0, 0), ticker_text, font=font_large)
+        ticker_width = ticker_bbox[2] - ticker_bbox[0]
+        ticker_height = ticker_bbox[3] - ticker_bbox[1]
+        draw.text((x_right_ticker - ticker_width // 2, y_fields_top), ticker_text, fill="white", font=font_large)
 
-    # ALGO Price
-    price_text = f"{price_in_algo:.6f} ALGO"
-    price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
-    price_width = price_bbox[2] - price_bbox[0]
-    y_price_top = y_fields_top + ticker_height + field_spacing
-    draw.text((x_right_price - price_width // 2, y_price_top), price_text, fill="white", font=font_large)
+        # ALGO Price
+        price_text = f"{price_in_algo:.6f} ALGO"
+        price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
+        price_width = price_bbox[2] - price_bbox[0]
+        y_price_top = y_fields_top + ticker_height + field_spacing
+        draw.text((x_right_price - price_width // 2, y_price_top), price_text, fill="white", font=font_large)
 
-    # 24-Hour Change
-    if change_24hr is not None:
+        # 24-Hour Change
         change_color = "green" if change_24hr > 0 else "red"
         price_change_text = f"24hr Change: {change_24hr:.2f}%"
         price_change_bbox = draw.textbbox((0, 0), price_change_text, font=font_medium)
@@ -89,12 +92,26 @@ async def action_card(ctx: nextcord.Interaction):
         y_change_top = y_price_top + price_bbox[3] - price_bbox[1] + field_spacing
         draw.text((x_right_change - price_change_width // 2, y_change_top), price_change_text, fill=change_color, font=font_medium)
 
-    # Save the image
-    output_path = "./output_action_card.jpg"
-    image.save(output_path)
+        # Save the updated image
+        output_path = "./output_action_card.jpg"
+        image.save(output_path)
+    except Exception as e:
+        await ctx.send(f"Error drawing or saving the image: {e}")
+        return
 
     # Send the image in Discord
-    await ctx.send(file=nextcord.File(output_path))
+    try:
+        if os.path.exists(output_path):
+            await ctx.send(file=nextcord.File(output_path))
+        else:
+            await ctx.send("Output image not found.")
+    except Exception as e:
+        await ctx.send(f"Error sending the image: {e}")
 
 # Run the bot
 bot.run(DISCORD_BOT_TOKEN)
+
+
+      
+  
+   
