@@ -31,22 +31,22 @@ async def on_ready():
 
 @bot.slash_command(name="action_card", description="Displays the action card for Akita Dashboard")
 async def action_card(ctx: nextcord.Interaction):
-    await ctx.response.defer()  # Defer to allow for processing
+    # Defer interaction response
+    await ctx.response.defer(ephemeral=False)  # Acknowledge the interaction quickly
 
     # Load image
     if not os.path.exists(IMAGE_PATH):
-        await ctx.followup.send("Error: Image file not found. Please check the image path.")
+        await ctx.followup.send("Image file not found.")
         return
-
     try:
         image = Image.open(IMAGE_PATH)
     except Exception as e:
-        await ctx.followup.send(f"Error loading the image: {e}")
+        await ctx.followup.send(f"Error loading image: {e}")
         return
 
     # Fetch price data
     try:
-        response = requests.get(API_URL)
+        response = requests.get(API_URL, timeout=10)  # Set a timeout for API requests
         response.raise_for_status()
         price_data = response.json()
         price_in_algo = price_data[-1]['price']
@@ -97,7 +97,7 @@ async def action_card(ctx: nextcord.Interaction):
         output_path = "./output_action_card.jpg"
         image.save(output_path)
     except Exception as e:
-        await ctx.followup.send(f"Error processing the image: {e}")
+        await ctx.followup.send(f"Error drawing or saving the image: {e}")
         return
 
     # Send the image in Discord
@@ -105,7 +105,7 @@ async def action_card(ctx: nextcord.Interaction):
         if os.path.exists(output_path):
             await ctx.followup.send(file=nextcord.File(output_path))
         else:
-            await ctx.followup.send("Error: Output image not found after processing.")
+            await ctx.followup.send("Output image not found.")
     except Exception as e:
         await ctx.followup.send(f"Error sending the image: {e}")
 
@@ -114,7 +114,6 @@ bot.run(DISCORD_BOT_TOKEN)
 
 
     
-      
-      
+    
   
    
