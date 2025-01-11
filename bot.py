@@ -17,6 +17,7 @@ if not DISCORD_BOT_TOKEN:
 
 # Setup bot with intents
 intents = nextcord.Intents.default()
+intents.message_content = True  # Enable Message Content Intent
 bot = commands.Bot(command_prefix="/", intents=intents, application_id=APPLICATION_ID)
 
 # Paths and API
