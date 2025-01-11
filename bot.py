@@ -31,16 +31,17 @@ async def on_ready():
 
 @bot.slash_command(name="action_card", description="Displays the action card for Akita Dashboard")
 async def action_card(ctx: nextcord.Interaction):
-    await ctx.response.defer()  # Defer to give time for processing
+    await ctx.response.defer()  # Defer to allow for processing
 
     # Load image
     if not os.path.exists(IMAGE_PATH):
-        await ctx.send("Image file not found.")
+        await ctx.followup.send("Error: Image file not found. Please check the image path.")
         return
+
     try:
         image = Image.open(IMAGE_PATH)
     except Exception as e:
-        await ctx.send(f"Error loading image: {e}")
+        await ctx.followup.send(f"Error loading the image: {e}")
         return
 
     # Fetch price data
@@ -53,7 +54,7 @@ async def action_card(ctx: nextcord.Interaction):
         closing_price = price_data[-1]['price']
         change_24hr = round(((closing_price - opening_price) / opening_price) * 100, 2)
     except Exception as e:
-        await ctx.send(f"Error fetching price data: {e}")
+        await ctx.followup.send(f"Error fetching price data: {e}")
         return
 
     # Draw on the image
@@ -96,22 +97,24 @@ async def action_card(ctx: nextcord.Interaction):
         output_path = "./output_action_card.jpg"
         image.save(output_path)
     except Exception as e:
-        await ctx.send(f"Error drawing or saving the image: {e}")
+        await ctx.followup.send(f"Error processing the image: {e}")
         return
 
     # Send the image in Discord
     try:
         if os.path.exists(output_path):
-            await ctx.send(file=nextcord.File(output_path))
+            await ctx.followup.send(file=nextcord.File(output_path))
         else:
-            await ctx.send("Output image not found.")
+            await ctx.followup.send("Error: Output image not found after processing.")
     except Exception as e:
-        await ctx.send(f"Error sending the image: {e}")
+        await ctx.followup.send(f"Error sending the image: {e}")
 
 # Run the bot
 bot.run(DISCORD_BOT_TOKEN)
 
 
+    
+      
       
   
    
