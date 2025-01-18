@@ -30,8 +30,8 @@ intents.message_content = True  # Enable Message Content Intent
 bot = commands.Bot(command_prefix="/", intents=intents, application_id=APPLICATION_ID)
 
 # Paths and API
-IMAGE_PATH = os.path.join(os.getcwd(), "akita action card.jpg")  # Ensure path is correct
-FONT_PATH = os.path.join(os.getcwd(), "arial.ttf")  # Ensure font path is correct
+IMAGE_PATH = "./akita action card.jpg"
+FONT_PATH = "./arial.ttf"
 API_URL = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 SHARE_LOG_FILE = "./share_log.json"
 OUTPUT_PATH = "./output_action_card.jpg"
@@ -104,14 +104,8 @@ async def action_card(ctx: nextcord.Interaction, text: str = None):
     # Draw on the image
     try:
         draw = ImageDraw.Draw(image)
-
-        # Ensure fonts are loaded
-        try:
-            font_large = ImageFont.truetype(FONT_PATH, 60)
-            font_medium = ImageFont.truetype(FONT_PATH, 40)
-        except Exception as e:
-            print(f"Error loading font: {e}")
-            font_large = font_medium = None
+        font_large = ImageFont.truetype(FONT_PATH, 60)
+        font_medium = ImageFont.truetype(FONT_PATH, 40)
 
         x_right_ticker = image.width * 0.85
         x_right_price = image.width * 0.81
