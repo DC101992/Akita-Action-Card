@@ -3,3 +3,4 @@ requests==2.32.3
 pillow==11.1.0
 nextcord==2.6.0
 python-dotenv==1.0.1
+tweepy==4.15.0  
