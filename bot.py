@@ -67,7 +67,13 @@ def post_to_twitter(image_path: str, status: str):
         auth = tweepy.OAuthHandler(os.getenv("TWITTER_API_KEY"), os.getenv("TWITTER_API_SECRET"))
         auth.set_access_token(os.getenv("TWITTER_ACCESS_TOKEN"), os.getenv("TWITTER_ACCESS_SECRET"))
         twitter_api = tweepy.API(auth)
-        twitter_api.update_with_media(filename=image_path, status=status)
+        
+        # Upload the image (media)
+        media = twitter_api.media_upload(image_path)
+        
+        # Post the tweet with the media
+        twitter_api.update_status(status=status, media_ids=[media.media_id])
+        
         return True
     except Exception as e:
         print(f"Error posting to Twitter: {e}")
@@ -169,3 +175,6 @@ flask_thread = threading.Thread(target=run_flask)
 flask_thread.start()
 
 bot.run(DISCORD_BOT_TOKEN)
+
+       
+  
