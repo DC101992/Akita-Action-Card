@@ -8,6 +8,7 @@ from nextcord.ui import Button, View
 from dotenv import load_dotenv
 from flask import Flask, redirect, request, session, url_for
 from requests_oauthlib import OAuth2Session
+import threading
 import tweepy  # For Twitter API integration
 
 # Load environment variables
@@ -19,7 +20,7 @@ APPLICATION_ID = "1325141241356095591"  # Replace with your Application ID
 # Twitter API keys
 CLIENT_ID = os.getenv("TWITTER_CLIENT_ID")
 CLIENT_SECRET = os.getenv("TWITTER_CLIENT_SECRET")
-REDIRECT_URI = "http://127.0.0.1:5000/callback"  # Update based on your setup
+REDIRECT_URI = "http://127.0.0.1:5000/callback"
 AUTHORIZATION_BASE_URL = "https://twitter.com/i/oauth2/authorize"
 TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
 SCOPES = ["tweet.read", "tweet.write", "users.read", "offline.access"]
@@ -123,7 +124,6 @@ async def action_card(ctx: nextcord.Interaction, text: str = None):
         ticker_bbox = draw.textbbox((0, 0), ticker_text, font=font_large)
         draw.text((x_right_ticker - (ticker_bbox[2] - ticker_bbox[0]) // 2, 100), ticker_text, fill="white", font=font_large)
         
-        # Other drawing logic here...
         image.save(OUTPUT_PATH)
     except Exception as e:
         await ctx.followup.send(f"Error drawing on the image: {e}")
@@ -160,8 +160,12 @@ async def share_action_card(ctx: nextcord.Interaction):
     view.add_item(share_button)
     await ctx.followup.send("Click below to share your action card!", view=view)
 
+# Run the Flask app in a separate thread to handle Twitter OAuth
+def run_flask():
+    app.run(port=5000, threaded=True)
+
+# Run Flask server and the Discord bot
+flask_thread = threading.Thread(target=run_flask)
+flask_thread.start()
+
 bot.run(DISCORD_BOT_TOKEN)
-
-
-
-        
