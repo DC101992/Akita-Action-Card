@@ -90,8 +90,8 @@ async def action_card(ctx: nextcord.Interaction, text: str = None):
 
     # Fetch price data
     try:
-        response = requests.get(API_URL, timeout=10)  # Set a timeout for API requests
-        response.raise_for_status()
+        response = requests.get(API_URL, timeout=5)  # Set a shorter timeout
+        response.raise_for_status()  # Ensure exceptions are raised for HTTP errors
         price_data = response.json()
         price_in_algo = price_data[-1]['price']
         opening_price = price_data[0]['price']
