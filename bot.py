@@ -4,37 +4,82 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import nextcord
 from nextcord.ext import commands
-from nextcord.ext.commands import Bot
-from nextcord import Interaction
-from nextcord.ui import View, Button
-
-# Initialize bot and client
-intents = nextcord.Intents.default()
-intents.messages = True
-intents.message_content = True
-bot = Bot(command_prefix="!", intents=intents)
+from nextcord.ui import Button, View
+from dotenv import load_dotenv
+import tweepy  # For Twitter API integration
 
 # Load environment variables
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-FONT_PATH = "path/to/font.ttf"
-IMAGE_PATH = "path/to/base_image.png"
-OUTPUT_PATH = "output_image.png"
-API_ENDPOINT = "https://api.example.com/prices"
-TWITTER_ENABLED = False
+load_dotenv()
 
+DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+APPLICATION_ID = "1325141241356095591"  # Replace with your Application ID
+
+# Twitter API keys
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
+TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+
+# Verify token retrieval
+if not DISCORD_BOT_TOKEN:
+    raise ValueError("Bot token not found. Ensure your .env file contains the correct token.")
+
+# Setup bot with intents
+intents = nextcord.Intents.default()
+intents.message_content = True  # Enable Message Content Intent
+bot = commands.Bot(command_prefix="/", intents=intents, application_id=APPLICATION_ID)
+
+# Paths and API
+IMAGE_PATH = "./akita action card.jpg"
+FONT_PATH = "./arial.ttf"
+API_URL = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
+SHARE_LOG_FILE = "./share_log.json"
+OUTPUT_PATH = "./output_action_card.jpg"
+
+# Twitter client setup
+def post_to_twitter(image_path: str, status: str):
+    try:
+        auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
+        auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
+        twitter_api = tweepy.API(auth)
+
+        # Post the image and text
+        twitter_api.update_with_media(filename=image_path, status=status)
+        return True
+    except Exception as e:
+        print(f"Error posting to Twitter: {e}")
+        return False
+
+# Logging shares
+def log_share(user_id: int):
+    if not os.path.exists(SHARE_LOG_FILE):
+        with open(SHARE_LOG_FILE, 'w') as file:
+            json.dump({}, file)
+
+    with open(SHARE_LOG_FILE, 'r') as file:
+        logs = json.load(file)
+
+    logs[str(user_id)] = logs.get(str(user_id), 0) + 1
+
+    with open(SHARE_LOG_FILE, 'w') as file:
+        json.dump(logs, file)
+
+# Bot events
 @bot.event
 async def on_ready():
     print(f"We have logged in as {bot.user}")
 
+# Fetch price data
 async def fetch_price_data():
     try:
-        response = requests.get(API_ENDPOINT, timeout=5)
-        response.raise_for_status()
+        response = requests.get(API_URL, timeout=5)  # Set a shorter timeout
+        response.raise_for_status()  # Ensure exceptions are raised for HTTP errors
         return response.json()
     except Exception as e:
         print(f"Error fetching price data: {e}")
         return None
 
+# Action card creation function
 def draw_action_card(image_path, output_path, price_data):
     try:
         image = Image.open(image_path)
@@ -84,55 +129,68 @@ def draw_action_card(image_path, output_path, price_data):
         print(f"Error drawing action card: {e}")
         return None
 
-@bot.slash_command(name="action_card", description="Generate and optionally share an Action Card.")
-async def action_card(interaction: Interaction, share_to_twitter: bool = False):
-    await interaction.response.defer()
-
-    # Load image
-    if not os.path.exists(IMAGE_PATH):
-        await interaction.followup.send("Image file not found.")
-        return
+# Main command for action card
+@bot.slash_command(
+    name="action_card",
+    description="Displays the action card for Akita Dashboard"
+)
+async def action_card(ctx: nextcord.Interaction):
+    # Defer the interaction
+    await ctx.response.defer(ephemeral=False)
 
     # Fetch price data
     price_data = await bot.loop.run_in_executor(None, fetch_price_data)
     if not price_data:
-        await interaction.followup.send("Failed to fetch price data.")
+        await ctx.followup.send("Failed to fetch price data.")
         return
 
     # Draw on the image
     output_path = draw_action_card(IMAGE_PATH, OUTPUT_PATH, price_data)
     if not output_path:
-        await interaction.followup.send("Error generating the action card.")
+        await ctx.followup.send("Error generating the action card.")
         return
 
-    # Create and send the Action Card image
+    # Send the image
     try:
         if os.path.exists(output_path):
-            file = nextcord.File(output_path, filename="action_card.png")
-            await interaction.followup.send("Here is your Action Card:", file=file)
+            await ctx.followup.send(file=nextcord.File(output_path))
         else:
-            await interaction.followup.send("Output image not found.")
+            await ctx.followup.send("Output image not found.")
     except Exception as e:
-        print(f"Error sending the image: {e}")
-        await interaction.followup.send("Error sending the action card.")
+        await ctx.followup.send(f"Error sending the image: {e}")
 
-    # Optionally share to Twitter with a Share Button
-    if share_to_twitter and TWITTER_ENABLED:
-        class ShareButton(View):
-            @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
-            async def share_callback(self, button_interaction: Interaction):
-                if TWITTER_ENABLED:
-                    try:
-                        print("Posting to Twitter...")  # Replace with actual Twitter API call
-                        await button_interaction.response.send_message("Action Card shared on Twitter!", ephemeral=True)
-                    except Exception as e:
-                        print(f"Error posting to Twitter: {e}")
-                        await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
-                else:
-                    await button_interaction.response.send_message("Twitter sharing is not enabled.", ephemeral=True)
+# Share button command
+@bot.slash_command(
+    name="share_action_card",
+    description="Generate and share your Akita action card"
+)
+async def share_action_card(ctx: nextcord.Interaction):
+    await ctx.response.defer(ephemeral=False)
 
-        # Show the share button in the Discord message
-        view = ShareButton(timeout=300)  # Button available for 5 minutes
-        await interaction.followup.send("Here is your Action Card:", file=file, view=view)
+    # Define the button callback
+    async def share_callback(interaction: nextcord.Interaction):
+        log_share(ctx.user.id)  # Log the share action
+        status = "🚀 Check out Akita's performance! #Crypto #Algorand"
+        success = post_to_twitter(OUTPUT_PATH, status)
+        if success:
+            await interaction.response.send_message("Card successfully shared on Twitter!")
+        else:
+            await interaction.response.send_message("Failed to share the card on Twitter.")
 
+    # Create share button
+    share_button = Button(label="Share Now", style=nextcord.ButtonStyle.primary, emoji="📤")
+    share_button.callback = share_callback
+
+    # Send the button
+    view = View()
+    view.add_item(share_button)
+    await ctx.followup.send("Click below to share your action card!", view=view)
+
+# Run the bot
 bot.run(DISCORD_BOT_TOKEN)
+
+
+       
+   
+     
+                        
