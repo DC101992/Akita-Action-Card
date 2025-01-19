@@ -162,7 +162,7 @@ async def action_card(interaction: Interaction):
             return
 
         # Fetch price data
-        price_data = await bot.loop.run_in_executor(None, fetch_price_data)
+        price_data = await fetch_price_data()  # Properly await the coroutine
         if not price_data:
             await interaction.followup.send("Failed to fetch price data.")
             return
