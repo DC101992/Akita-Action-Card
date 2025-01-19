@@ -17,11 +17,13 @@ bot = Bot(command_prefix="!", intents=intents)
 
 # Load environment variables
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-FONT_PATH = "path/to/font.ttf"
 IMAGE_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/akita%20action%20card.jpg"
 OUTPUT_PATH = "output_image.png"
 API_ENDPOINT = "https://api.example.com/prices"
 TWITTER_ENABLED = False
+
+# Font URL
+FONT_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/arial.ttf"
 
 @bot.event
 async def on_ready():
@@ -45,11 +47,23 @@ def fetch_image_from_url(image_url):
         print(f"Error fetching the image: {e}")
         return None
 
+def fetch_font_from_url(font_url, font_size):
+    try:
+        response = requests.get(font_url, timeout=5)
+        response.raise_for_status()
+        font_data = BytesIO(response.content)
+        return ImageFont.truetype(font_data, font_size)
+    except Exception as e:
+        print(f"Error fetching font: {e}")
+        return ImageFont.load_default()  # Fallback to default font
+
 def draw_action_card(image, output_path, price_data):
     try:
         draw = ImageDraw.Draw(image)
-        font_large = ImageFont.truetype(FONT_PATH, 60)
-        font_medium = ImageFont.truetype(FONT_PATH, 40)
+
+        # Fetch fonts dynamically
+        font_large = fetch_font_from_url(FONT_URL, 60)
+        font_medium = fetch_font_from_url(FONT_URL, 40)
 
         x_right_ticker = image.width * 0.85
         x_right_price = image.width * 0.81
@@ -66,7 +80,7 @@ def draw_action_card(image, output_path, price_data):
         ticker_height = ticker_bbox[3] - ticker_bbox[1]
         draw.text((x_right_ticker - ticker_width // 2, y_fields_top), ticker_text, fill="white", font=font_large)
 
-        # ALGO Price
+        # ALGO Price and Change
         price_in_algo = price_data[-1]['price']
         opening_price = price_data[0]['price']
         closing_price = price_data[-1]['price']
@@ -78,7 +92,6 @@ def draw_action_card(image, output_path, price_data):
         y_price_top = y_fields_top + ticker_height + field_spacing
         draw.text((x_right_price - price_width // 2, y_price_top), price_text, fill="white", font=font_large)
 
-        # 24-Hour Change
         change_color = "green" if change_24hr > 0 else "red"
         price_change_text = f"24hr Change: {change_24hr:.2f}%"
         price_change_bbox = draw.textbbox((0, 0), price_change_text, font=font_medium)
@@ -143,11 +156,3 @@ async def action_card(interaction: Interaction):
         await interaction.followup.send("An error occurred while processing your request.")
 
 bot.run(DISCORD_BOT_TOKEN)
-
-
-
-       
-       
-
-
-     
