@@ -6,6 +6,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Bot
 from nextcord import Interaction
+from nextcord.ui import View, Button
 
 # Initialize bot and client
 intents = nextcord.Intents.default()
@@ -104,7 +105,7 @@ async def action_card(interaction: Interaction, share_to_twitter: bool = False):
         await interaction.followup.send("Error generating the action card.")
         return
 
-    # Send the image
+    # Create and send the Action Card image
     try:
         if os.path.exists(output_path):
             file = nextcord.File(output_path, filename="action_card.png")
@@ -115,23 +116,23 @@ async def action_card(interaction: Interaction, share_to_twitter: bool = False):
         print(f"Error sending the image: {e}")
         await interaction.followup.send("Error sending the action card.")
 
-    # Optionally share to Twitter
+    # Optionally share to Twitter with a Share Button
     if share_to_twitter and TWITTER_ENABLED:
-        try:
-            # Example placeholder code for posting to Twitter
-            print("Posting to Twitter...")
-            await interaction.followup.send("Action Card shared on Twitter!")
-        except Exception as e:
-            print(f"Error posting to Twitter: {e}")
-            await interaction.followup.send("Failed to share on Twitter.")
+        class ShareButton(View):
+            @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
+            async def share_callback(self, button_interaction: Interaction):
+                if TWITTER_ENABLED:
+                    try:
+                        print("Posting to Twitter...")  # Replace with actual Twitter API call
+                        await button_interaction.response.send_message("Action Card shared on Twitter!", ephemeral=True)
+                    except Exception as e:
+                        print(f"Error posting to Twitter: {e}")
+                        await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
+                else:
+                    await button_interaction.response.send_message("Twitter sharing is not enabled.", ephemeral=True)
+
+        # Show the share button in the Discord message
+        view = ShareButton(timeout=300)  # Button available for 5 minutes
+        await interaction.followup.send("Here is your Action Card:", file=file, view=view)
 
 bot.run(DISCORD_BOT_TOKEN)
-
-
-
-     
-
-
- 
- 
-          
