@@ -8,6 +8,7 @@ from nextcord.ext.commands import Bot
 from nextcord import Interaction
 from nextcord.ui import View, Button
 from io import BytesIO
+import tweepy  # For Twitter API integration
 
 # Initialize bot and client
 intents = nextcord.Intents.default()
@@ -20,10 +21,43 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 IMAGE_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/akita%20action%20card.jpg"
 OUTPUT_PATH = "output_image.png"
 API_ENDPOINT = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
-TWITTER_ENABLED = False
+TWITTER_ENABLED = True
+SHARE_LOG_FILE = "share_log.json"
 
 # Font URL
 FONT_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/arial.ttf"
+
+# Twitter API keys
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
+TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+
+def post_to_twitter(image_path: str, status: str):
+    try:
+        auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
+        auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
+        twitter_api = tweepy.API(auth)
+
+        # Post the image and text
+        twitter_api.update_with_media(filename=image_path, status=status)
+        return True
+    except Exception as e:
+        print(f"Error posting to Twitter: {e}")
+        return False
+
+def log_share(user_id: int):
+    if not os.path.exists(SHARE_LOG_FILE):
+        with open(SHARE_LOG_FILE, 'w') as file:
+            json.dump({}, file)
+
+    with open(SHARE_LOG_FILE, 'r') as file:
+        logs = json.load(file)
+
+    logs[str(user_id)] = logs.get(str(user_id), 0) + 1
+
+    with open(SHARE_LOG_FILE, 'w') as file:
+        json.dump(logs, file)
 
 @bot.event
 async def on_ready():
@@ -146,10 +180,15 @@ async def action_card(interaction: Interaction):
             class ShareButton(View):
                 @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
                 async def share_callback(self, button_interaction: Interaction):
+                    log_share(interaction.user.id)  # Log the share action
                     if TWITTER_ENABLED:
                         try:
-                            print("Posting to Twitter...")  # Replace with Twitter API integration
-                            await button_interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
+                            status = "🚀 Check out Akita's performance! #Crypto #Algorand"
+                            success = post_to_twitter(output_path, status)
+                            if success:
+                                await button_interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
+                            else:
+                                await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
                         except Exception as e:
                             print(f"Error sharing to Twitter: {e}")
                             await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
