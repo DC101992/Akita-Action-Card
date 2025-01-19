@@ -19,7 +19,7 @@ bot = Bot(command_prefix="!", intents=intents)
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 IMAGE_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/akita%20action%20card.jpg"
 OUTPUT_PATH = "output_image.png"
-API_ENDPOINT = "https://api.example.com/prices"
+API_ENDPOINT = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 TWITTER_ENABLED = False
 
 # Font URL
@@ -33,10 +33,20 @@ async def fetch_price_data():
     try:
         response = requests.get(API_ENDPOINT, timeout=5)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        print(f"DEBUG: API response: {data}")  # Debugging output
+        return data
     except Exception as e:
         print(f"Error fetching price data: {e}")
         return None
+
+def calculate_24hr_change(data):
+    if not data or len(data) < 2:
+        return None
+    opening_price = data[0]['price']
+    closing_price = data[-1]['price']
+    price_change = ((closing_price - opening_price) / opening_price) * 100
+    return round(price_change, 2)
 
 def fetch_image_from_url(image_url):
     try:
@@ -83,8 +93,7 @@ def draw_action_card(image, output_path, price_data):
         # ALGO Price and Change
         price_in_algo = price_data[-1]['price']
         opening_price = price_data[0]['price']
-        closing_price = price_data[-1]['price']
-        change_24hr = round(((closing_price - opening_price) / opening_price) * 100, 2)
+        change_24hr = calculate_24hr_change(price_data)
 
         price_text = f"{price_in_algo:.6f} ALGO"
         price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
