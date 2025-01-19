@@ -30,7 +30,7 @@ intents.message_content = True  # Enable Message Content Intent
 bot = commands.Bot(command_prefix="/", intents=intents, application_id=APPLICATION_ID)
 
 # Paths and API
-IMAGE_PATH = "./akita action card.jpg"
+IMAGE_PATH = "./akita action card.jpg"  # Ensure the image is in the same directory or adjust path for hosting on Render
 FONT_PATH = "./arial.ttf"
 API_URL = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
 SHARE_LOG_FILE = "./share_log.json"
@@ -69,20 +69,40 @@ def log_share(user_id: int):
 async def on_ready():
     print(f"We have logged in as {bot.user}")
 
-# Fetch price data
-async def fetch_price_data():
+# Main command for action card
+@bot.slash_command(
+    name="action_card",
+    description="Displays the action card for Akita Dashboard"
+)
+async def action_card(ctx: nextcord.Interaction, text: str = None):
+    # Defer the interaction
+    await ctx.response.defer(ephemeral=False)
+
+    # Load image
+    if not os.path.exists(IMAGE_PATH):
+        await ctx.followup.send("Image file not found.")
+        return
+    try:
+        image = Image.open(IMAGE_PATH)
+    except Exception as e:
+        await ctx.followup.send(f"Error loading image: {e}")
+        return
+
+    # Fetch price data
     try:
         response = requests.get(API_URL, timeout=5)  # Set a shorter timeout
         response.raise_for_status()  # Ensure exceptions are raised for HTTP errors
-        return response.json()
+        price_data = response.json()
+        price_in_algo = price_data[-1]['price']
+        opening_price = price_data[0]['price']
+        closing_price = price_data[-1]['price']
+        change_24hr = round(((closing_price - opening_price) / opening_price) * 100, 2)
     except Exception as e:
-        print(f"Error fetching price data: {e}")
-        return None
+        await ctx.followup.send(f"Error fetching price data: {e}")
+        return
 
-# Action card creation function
-def draw_action_card(image_path, output_path, price_data):
+    # Draw on the image
     try:
-        image = Image.open(image_path)
         draw = ImageDraw.Draw(image)
         font_large = ImageFont.truetype(FONT_PATH, 60)
         font_medium = ImageFont.truetype(FONT_PATH, 40)
@@ -103,11 +123,6 @@ def draw_action_card(image_path, output_path, price_data):
         draw.text((x_right_ticker - ticker_width // 2, y_fields_top), ticker_text, fill="white", font=font_large)
 
         # ALGO Price
-        price_in_algo = price_data[-1]['price']
-        opening_price = price_data[0]['price']
-        closing_price = price_data[-1]['price']
-        change_24hr = round(((closing_price - opening_price) / opening_price) * 100, 2)
-
         price_text = f"{price_in_algo:.6f} ALGO"
         price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
         price_width = price_bbox[2] - price_bbox[0]
@@ -123,37 +138,15 @@ def draw_action_card(image_path, output_path, price_data):
         draw.text((x_right_change - price_change_width // 2, y_change_top), price_change_text, fill=change_color, font=font_medium)
 
         # Save the updated image
-        image.save(output_path)
-        return output_path
+        image.save(OUTPUT_PATH)
     except Exception as e:
-        print(f"Error drawing action card: {e}")
-        return None
-
-# Main command for action card
-@bot.slash_command(
-    name="action_card",
-    description="Displays the action card for Akita Dashboard"
-)
-async def action_card(ctx: nextcord.Interaction):
-    # Defer the interaction
-    await ctx.response.defer(ephemeral=False)
-
-    # Fetch price data
-    price_data = await bot.loop.run_in_executor(None, fetch_price_data)
-    if not price_data:
-        await ctx.followup.send("Failed to fetch price data.")
-        return
-
-    # Draw on the image
-    output_path = draw_action_card(IMAGE_PATH, OUTPUT_PATH, price_data)
-    if not output_path:
-        await ctx.followup.send("Error generating the action card.")
+        await ctx.followup.send(f"Error drawing on the image: {e}")
         return
 
     # Send the image
     try:
-        if os.path.exists(output_path):
-            await ctx.followup.send(file=nextcord.File(output_path))
+        if os.path.exists(OUTPUT_PATH):
+            await ctx.followup.send(file=nextcord.File(OUTPUT_PATH))
         else:
             await ctx.followup.send("Output image not found.")
     except Exception as e:
@@ -188,9 +181,3 @@ async def share_action_card(ctx: nextcord.Interaction):
 
 # Run the bot
 bot.run(DISCORD_BOT_TOKEN)
-
-
-       
-   
-     
-                        
