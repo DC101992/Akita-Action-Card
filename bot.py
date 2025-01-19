@@ -6,7 +6,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord.ext.commands import Bot
 from nextcord import Interaction
-from nextcord.ui import View, Button
+from io import BytesIO
 
 # Initialize bot and client
 intents = nextcord.Intents.default()
@@ -17,7 +17,7 @@ bot = Bot(command_prefix="!", intents=intents)
 # Load environment variables
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 FONT_PATH = "path/to/font.ttf"
-IMAGE_PATH = "path/to/base_image.png"
+IMAGE_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/akita%20action%20card.jpg"
 OUTPUT_PATH = "output_image.png"
 API_ENDPOINT = "https://api.example.com/prices"
 TWITTER_ENABLED = False
@@ -35,9 +35,17 @@ async def fetch_price_data():
         print(f"Error fetching price data: {e}")
         return None
 
-def draw_action_card(image_path, output_path, price_data):
+def fetch_image_from_url(image_url):
     try:
-        image = Image.open(image_path)
+        response = requests.get(image_url, timeout=5)
+        response.raise_for_status()
+        return Image.open(BytesIO(response.content))
+    except Exception as e:
+        print(f"Error fetching the image: {e}")
+        return None
+
+def draw_action_card(image, output_path, price_data):
+    try:
         draw = ImageDraw.Draw(image)
         font_large = ImageFont.truetype(FONT_PATH, 60)
         font_medium = ImageFont.truetype(FONT_PATH, 40)
@@ -88,9 +96,10 @@ def draw_action_card(image_path, output_path, price_data):
 async def action_card(interaction: Interaction):
     await interaction.response.defer()
 
-    # Load image
-    if not os.path.exists(IMAGE_PATH):
-        await interaction.followup.send("Image file not found.")
+    # Fetch the image from the raw URL
+    image = fetch_image_from_url(IMAGE_URL)
+    if not image:
+        await interaction.followup.send("Failed to load the action card image.")
         return
 
     # Fetch price data
@@ -100,7 +109,7 @@ async def action_card(interaction: Interaction):
         return
 
     # Draw on the image
-    output_path = draw_action_card(IMAGE_PATH, OUTPUT_PATH, price_data)
+    output_path = draw_action_card(image, OUTPUT_PATH, price_data)
     if not output_path:
         await interaction.followup.send("Error generating the action card.")
         return
@@ -109,8 +118,6 @@ async def action_card(interaction: Interaction):
     try:
         if os.path.exists(output_path):
             file = nextcord.File(output_path, filename="action_card.png")
-
-            # Define a Share button
             class ShareButton(View):
                 @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
                 async def share_callback(self, button_interaction: Interaction):
