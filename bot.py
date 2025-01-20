@@ -173,33 +173,33 @@ async def action_card(interaction: Interaction):
             await interaction.followup.send("Error generating the action card.")
             return
 
-        # Send the image with a Share button
+        # Send the action card with a Share button
         if os.path.exists(output_path):
             file = nextcord.File(output_path, filename="action_card.png")
 
             class ShareButton(View):
-                @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
-                async def share_callback(self, button_interaction: Interaction):
-                    if button_interaction.response.is_done():
-                        await button_interaction.followup.send("This button has expired. Please try again.", ephemeral=True)
-                        return
+                def __init__(self):
+                    super().__init__(timeout=300)  # Buttons expire after 5 minutes
+                    self.add_item(Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary, custom_id="share_button"))
 
-                    log_share(interaction.user.id)  # Log the share action
-                    if TWITTER_ENABLED:
-                        try:
+                @staticmethod
+                async def share_callback(interaction: Interaction):
+                    try:
+                        log_share(interaction.user.id)  # Log the share action
+                        if TWITTER_ENABLED:
                             status = "\U0001F680 Check out Akita's performance! #Crypto #Algorand"
-                            success = post_to_twitter(output_path, status)
+                            success = post_to_twitter(OUTPUT_PATH, status)
                             if success:
-                                await button_interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
+                                await interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
                             else:
-                                await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
-                        except Exception as e:
-                            print(f"Error sharing to Twitter: {e}")
-                            await button_interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
-                    else:
-                        await button_interaction.response.send_message("Twitter sharing is disabled.", ephemeral=True)
+                                await interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
+                        else:
+                            await interaction.response.send_message("Twitter sharing is disabled.", ephemeral=True)
+                    except Exception as e:
+                        print(f"Error sharing to Twitter: {e}")
+                        await interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
 
-            view = ShareButton(timeout=300)  # Buttons expire after 5 minutes
+            view = ShareButton()  # Attach the share button view
             await interaction.followup.send("Here is your Action Card:", file=file, view=view)
         else:
             await interaction.followup.send("Output image not found.")
@@ -207,4 +207,4 @@ async def action_card(interaction: Interaction):
         print(f"Error occurred: {e}")
         await interaction.followup.send("An error occurred while processing your request.")
 
-bot.run(DISCORD_BOT_TOKEN)
+bot.run(DIS
