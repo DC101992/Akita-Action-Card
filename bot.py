@@ -4,6 +4,8 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import nextcord
 from nextcord.ext import commands
+from nextcord.ext.commands import Bot
+from nextcord import Interaction
 from nextcord.ui import View, Button
 from io import BytesIO
 import tweepy  # For Twitter API integration
@@ -12,7 +14,7 @@ import tweepy  # For Twitter API integration
 intents = nextcord.Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = commands.Bot(command_prefix="/", intents=intents)
+bot = Bot(command_prefix="!", intents=intents)
 
 # Load environment variables
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -109,7 +111,7 @@ def draw_action_card(image, output_path, price_data):
 
         x_right_ticker = image.width * 0.85
         x_right_price = image.width * 0.81
-        x_right_change = image.width * 0.83
+        x_right_change = image.width * 0.84
 
         y_logo_bottom = 150
         y_fields_top = y_logo_bottom + 20
@@ -148,7 +150,7 @@ def draw_action_card(image, output_path, price_data):
         return None
 
 @bot.slash_command(name="action_card", description="Generate and optionally share an Action Card.")
-async def action_card(interaction: nextcord.Interaction):
+async def action_card(interaction: Interaction):
     try:
         # Acknowledge the interaction
         await interaction.response.defer()
@@ -181,21 +183,19 @@ async def action_card(interaction: nextcord.Interaction):
                     self.add_item(Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary, custom_id="share_button"))
 
                 @staticmethod
-                async def share_callback(interaction: nextcord.Interaction):
+                async def share_callback(interaction: Interaction):
+                    print("Button callback triggered.")  # Log the interaction
                     try:
-                        log_share(interaction.user.id)  # Log the share action
-                        if TWITTER_ENABLED:
-                            status = "\U0001F680 Check out Akita's performance! #Crypto #Algorand"
-                            success = post_to_twitter(OUTPUT_PATH, status)
-                            if success:
-                                await interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
-                            else:
-                                await interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
+                        print(f"Interaction user: {interaction.user.id}")  # Log user ID
+                        if post_to_twitter(OUTPUT_PATH, "🚀 Check out Akita's performance!"):
+                            print("Tweet posted successfully.")
+                            await interaction.response.send_message("Tweet successfully posted!", ephemeral=True)
                         else:
-                            await interaction.response.send_message("Twitter sharing is disabled.", ephemeral=True)
+                            print("Tweet posting failed.")
+                            await interaction.response.send_message("Failed to post tweet.", ephemeral=True)
                     except Exception as e:
-                        print(f"Error sharing to Twitter: {e}")
-                        await interaction.response.send_message("Failed to share on Twitter.", ephemeral=True)
+                        print(f"Error in callback: {e}")
+                        await interaction.response.send_message("Error occurred while sharing.", ephemeral=True)
 
             view = ShareButton()  # Attach the share button view
             await interaction.followup.send("Here is your Action Card:", file=file, view=view)
