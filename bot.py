@@ -180,10 +180,14 @@ async def action_card(interaction: Interaction):
             class ShareButton(View):
                 @Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary)
                 async def share_callback(self, button_interaction: Interaction):
+                    if button_interaction.response.is_done():
+                        await button_interaction.followup.send("This button has expired. Please try again.", ephemeral=True)
+                        return
+
                     log_share(interaction.user.id)  # Log the share action
                     if TWITTER_ENABLED:
                         try:
-                            status = "🚀 Check out Akita's performance! #Crypto #Algorand"
+                            status = "\U0001F680 Check out Akita's performance! #Crypto #Algorand"
                             success = post_to_twitter(output_path, status)
                             if success:
                                 await button_interaction.response.send_message("Action Card shared to Twitter!", ephemeral=True)
