@@ -1,3 +1,4 @@
+
 from PIL import Image
 
 # Define the path to your image
@@ -11,3 +12,5 @@ img.show()
 
 # If you'd like to save it after modifications, you can do so:
 # img.save('new_image.jpg')
+
+
