@@ -4,8 +4,6 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import nextcord
 from nextcord.ext import commands
-from nextcord.ext.commands import Bot
-from nextcord import Interaction
 from nextcord.ui import View, Button
 from io import BytesIO
 import tweepy  # For Twitter API integration
@@ -14,7 +12,7 @@ import tweepy  # For Twitter API integration
 intents = nextcord.Intents.default()
 intents.messages = True
 intents.message_content = True
-bot = Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Load environment variables
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -150,7 +148,7 @@ def draw_action_card(image, output_path, price_data):
         return None
 
 @bot.slash_command(name="action_card", description="Generate and optionally share an Action Card.")
-async def action_card(interaction: Interaction):
+async def action_card(interaction: nextcord.Interaction):
     try:
         # Acknowledge the interaction
         await interaction.response.defer()
@@ -183,7 +181,7 @@ async def action_card(interaction: Interaction):
                     self.add_item(Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary, custom_id="share_button"))
 
                 @staticmethod
-                async def share_callback(interaction: Interaction):
+                async def share_callback(interaction: nextcord.Interaction):
                     try:
                         log_share(interaction.user.id)  # Log the share action
                         if TWITTER_ENABLED:
@@ -207,4 +205,4 @@ async def action_card(interaction: Interaction):
         print(f"Error occurred: {e}")
         await interaction.followup.send("An error occurred while processing your request.")
 
-bot.run(DIS
+bot.run(DISCORD_BOT_TOKEN)
