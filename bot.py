@@ -9,6 +9,7 @@ from nextcord import Interaction
 from nextcord.ui import View, Button
 from io import BytesIO
 import tweepy  # For Twitter API integration
+from requests_oauthlib import OAuth1
 
 # Initialize bot and client
 intents = nextcord.Intents.default()
@@ -33,32 +34,74 @@ TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 
-def post_to_twitter(image_path: str, status: str):
+def fetch_image_from_github(image_url):
+    """Fetch the image from GitHub."""
     try:
-        auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
-        auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-        twitter_api = tweepy.API(auth)
-
-        # Post the image and text
-        twitter_api.update_with_media(filename=image_path, status=status)
-        return True
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        return BytesIO(response.content)
     except Exception as e:
-        print(f"Error posting to Twitter: {e}")
-        return False
+        print(f"Error fetching image from GitHub: {e}")
+        return None
 
-def log_share(user_id: int):
-    if not os.path.exists(SHARE_LOG_FILE):
-        with open(SHARE_LOG_FILE, 'w') as file:
-            json.dump({}, file)
+def upload_media_to_twitter(image_data):
+    """Uploads media to Twitter and returns the media_id."""
+    url = "https://upload.twitter.com/1.1/media/upload.json"
+    auth = OAuth1(
+        TWITTER_API_KEY,
+        TWITTER_API_SECRET,
+        TWITTER_ACCESS_TOKEN,
+        TWITTER_ACCESS_SECRET
+    )
+    try:
+        # Save image data to a temporary file
+        temp_image_path = "./temp_image.jpg"
+        with open(temp_image_path, "wb") as file:
+            file.write(image_data.getbuffer())
 
-    with open(SHARE_LOG_FILE, 'r') as file:
-        logs = json.load(file)
+        # Step 1: INIT - Initialize media upload
+        total_bytes = os.path.getsize(temp_image_path)
+        init_data = {
+            "command": "INIT",
+            "media_type": "image/jpeg",
+            "total_bytes": total_bytes
+        }
+        init_response = requests.post(url, auth=auth, data=init_data)
+        init_response.raise_for_status()
+        media_id = init_response.json()["media_id"]
+        print(f"DEBUG: Media INIT successful. Media ID: {media_id}")
 
-    logs[str(user_id)] = logs.get(str(user_id), 0) + 1
+        # Step 2: APPEND - Upload the media in chunks
+        with open(temp_image_path, "rb") as file:
+            media_data = file.read()
+            append_data = {
+                "command": "APPEND",
+                "media_id": media_id,
+                "segment_index": 0
+            }
+            files = {"media": media_data}
+            append_response = requests.post(url, auth=auth, data=append_data, files=files)
+            append_response.raise_for_status()
+            print("DEBUG: Media APPEND successful.")
 
-    with open(SHARE_LOG_FILE, 'w') as file:
-        json.dump(logs, file)
+        # Step 3: FINALIZE - Finalize the media upload
+        finalize_data = {
+            "command": "FINALIZE",
+            "media_id": media_id
+        }
+        finalize_response = requests.post(url, auth=auth, data=finalize_data)
+        finalize_response.raise_for_status()
+        print("DEBUG: Media FINALIZE successful.")
 
+        # Cleanup temporary file
+        os.remove(temp_image_path)
+
+        return media_id
+    except Exception as e:
+        print(f"Error during media upload: {e}")
+        return None
+
+# Remaining bot implementation...
 @bot.event
 async def on_ready():
     print(f"We have logged in as {bot.user}")
@@ -187,11 +230,18 @@ async def action_card(interaction: Interaction):
                     print("Button callback triggered.")  # Log the interaction
                     try:
                         print(f"Interaction user: {interaction.user.id}")  # Log user ID
-                        if post_to_twitter(OUTPUT_PATH, "🚀 Check out Akita's performance!"):
-                            print("Tweet posted successfully.")
+
+                        # Fetch the image from GitHub
+                        image_data = fetch_image_from_github(IMAGE_URL)
+                        if not image_data:
+                            await interaction.response.send_message("Failed to fetch image.", ephemeral=True)
+                            return
+
+                        # Upload to Twitter
+                        media_id = upload_media_to_twitter(image_data)
+                        if media_id:
                             await interaction.response.send_message("Tweet successfully posted!", ephemeral=True)
                         else:
-                            print("Tweet posting failed.")
                             await interaction.response.send_message("Failed to post tweet.", ephemeral=True)
                     except Exception as e:
                         print(f"Error in callback: {e}")
@@ -206,3 +256,10 @@ async def action_card(interaction: Interaction):
         await interaction.followup.send("An error occurred while processing your request.")
 
 bot.run(DISCORD_BOT_TOKEN)
+
+
+
+
+       
+    
+        
