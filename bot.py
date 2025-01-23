@@ -44,6 +44,19 @@ def fetch_image_from_github(image_url):
         print(f"Error fetching image from GitHub: {e}")
         return None
 
+def post_to_twitter(image_path: str, status: str):
+    try:
+        auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
+        auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
+        twitter_api = tweepy.API(auth)
+
+        # Post the image and text
+        twitter_api.update_with_media(filename=image_path, status=status)
+        return True
+    except Exception as e:
+        print(f"Error posting to Twitter: {e}")
+        return False
+
 def upload_media_to_twitter(image_data):
     """Uploads media to Twitter and returns the media_id."""
     url = "https://upload.twitter.com/1.1/media/upload.json"
@@ -101,7 +114,19 @@ def upload_media_to_twitter(image_data):
         print(f"Error during media upload: {e}")
         return None
 
-# Remaining bot implementation...
+def log_share(user_id: int):
+    if not os.path.exists(SHARE_LOG_FILE):
+        with open(SHARE_LOG_FILE, 'w') as file:
+            json.dump({}, file)
+
+    with open(SHARE_LOG_FILE, 'r') as file:
+        logs = json.load(file)
+
+    logs[str(user_id)] = logs.get(str(user_id), 0) + 1
+
+    with open(SHARE_LOG_FILE, 'w') as file:
+        json.dump(logs, file)
+
 @bot.event
 async def on_ready():
     print(f"We have logged in as {bot.user}")
@@ -256,10 +281,3 @@ async def action_card(interaction: Interaction):
         await interaction.followup.send("An error occurred while processing your request.")
 
 bot.run(DISCORD_BOT_TOKEN)
-
-
-
-
-       
-    
-        
