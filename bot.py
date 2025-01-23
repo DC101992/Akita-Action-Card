@@ -31,6 +31,12 @@ TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
+# Initialize bot and client
+intents = nextcord.Intents.default()
+intents.messages = True
+intents.message_content = True
+bot = commands.Bot(command_prefix="/", intents=intents)
+
 def post_to_twitter(image_path: str, status: str):
     try:
         client = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN,
@@ -181,19 +187,22 @@ async def action_card(interaction: Interaction):
 
             class ShareButton(View):
                 def __init__(self):
-                    super().__init__(timeout=300)  # Buttons expire after 5 minutes
+                    super().__init__(timeout=600)  # Extend timeout to 10 minutes
                     self.add_item(Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary, custom_id="share_button"))
 
                 @staticmethod
                 async def share_callback(interaction: Interaction):
-                    print("Button callback triggered.")  # Log the interaction
                     try:
-                        print(f"Interaction user: {interaction.user.id}")  # Log user ID
+                        # Check if the interaction is expired
+                        if interaction.is_expired():
+                            await interaction.response.send_message("This interaction has expired. Please try again.", ephemeral=True)
+                            return
+
+                        # Process the callback
+                        print("Button callback triggered.")
                         if post_to_twitter(OUTPUT_PATH, "🚀 Check out Akita's performance!"):
-                            print("Tweet posted successfully.")
                             await interaction.response.send_message("Tweet successfully posted!", ephemeral=True)
                         else:
-                            print("Tweet posting failed.")
                             await interaction.response.send_message("Failed to post tweet.", ephemeral=True)
                     except Exception as e:
                         print(f"Error in callback: {e}")
