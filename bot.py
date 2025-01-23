@@ -10,7 +10,6 @@ from nextcord.ui import View, Button
 from io import BytesIO
 import tweepy  # For Twitter API integration
 from dotenv import load_dotenv
-from tweepy import Client, OAuthHandler
 
 # Load environment variables
 load_dotenv()
@@ -19,57 +18,73 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 IMAGE_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/akita%20action%20card.jpg"
 OUTPUT_PATH = "output_image.png"
 API_ENDPOINT = "https://free-api.vestige.fi/asset/523683256/prices/simple/1D"
-TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
+TWITTER_ENABLED = True
+SHARE_LOG_FILE = "share_log.json"
+
+# Font URL
+FONT_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/arial.ttf"
+
+# Twitter API keys
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
-FONT_URL = "https://raw.githubusercontent.com/DC101992/Akita-Action-Card/main/arial.ttf"
-SHARE_LOG_FILE = "share_log.json"
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
-# Initialize bot and client
-intents = nextcord.Intents.default()
-intents.messages = True
-intents.message_content = True
-bot = Bot(command_prefix="!", intents=intents)
+def post_to_twitter(image_path: str, status: str):
+    try:
+        client = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN,
+                               consumer_key=TWITTER_API_KEY,
+                               consumer_secret=TWITTER_API_SECRET,
+                               access_token=TWITTER_ACCESS_TOKEN,
+                               access_token_secret=TWITTER_ACCESS_SECRET)
+
+        # Upload media and tweet
+        media = client.media_upload(image_path)
+        client.create_tweet(text=status, media_ids=[media.media_id])
+        print("Tweet posted successfully!")
+        return True
+    except Exception as e:
+        print(f"Error posting to Twitter: {e}")
+        return False
 
 def log_share(user_id: int):
-    """Log the number of shares by a user."""
     if not os.path.exists(SHARE_LOG_FILE):
-        with open(SHARE_LOG_FILE, "w") as file:
+        with open(SHARE_LOG_FILE, 'w') as file:
             json.dump({}, file)
 
-    with open(SHARE_LOG_FILE, "r") as file:
+    with open(SHARE_LOG_FILE, 'r') as file:
         logs = json.load(file)
 
     logs[str(user_id)] = logs.get(str(user_id), 0) + 1
 
-    with open(SHARE_LOG_FILE, "w") as file:
+    with open(SHARE_LOG_FILE, 'w') as file:
         json.dump(logs, file)
 
+@bot.event
+async def on_ready():
+    print(f"We have logged in as {bot.user}")
+
 async def fetch_price_data():
-    """Fetch the latest price data."""
     try:
         response = requests.get(API_ENDPOINT, timeout=5)
         response.raise_for_status()
         data = response.json()
-        print(f"DEBUG: API response: {data}")
+        print(f"DEBUG: API response: {data}")  # Debugging output
         return data
     except Exception as e:
         print(f"Error fetching price data: {e}")
         return None
 
 def calculate_24hr_change(data):
-    """Calculate 24-hour price change percentage."""
     if not data or len(data) < 2:
         return None
-    opening_price = data[0]["price"]
-    closing_price = data[-1]["price"]
+    opening_price = data[0]['price']
+    closing_price = data[-1]['price']
     price_change = ((closing_price - opening_price) / opening_price) * 100
     return round(price_change, 2)
 
 def fetch_image_from_url(image_url):
-    """Fetch an image from the given URL."""
     try:
         response = requests.get(image_url, timeout=5)
         response.raise_for_status()
@@ -79,7 +94,6 @@ def fetch_image_from_url(image_url):
         return None
 
 def fetch_font_from_url(font_url, font_size):
-    """Fetch and return a font from the given URL."""
     try:
         response = requests.get(font_url, timeout=5)
         response.raise_for_status()
@@ -87,10 +101,9 @@ def fetch_font_from_url(font_url, font_size):
         return ImageFont.truetype(font_data, font_size)
     except Exception as e:
         print(f"Error fetching font: {e}")
-        return ImageFont.load_default()
+        return ImageFont.load_default()  # Fallback to default font
 
 def draw_action_card(image, output_path, price_data):
-    """Draw the action card with price data."""
     try:
         draw = ImageDraw.Draw(image)
 
@@ -138,66 +151,55 @@ def draw_action_card(image, output_path, price_data):
         print(f"Error drawing action card: {e}")
         return None
 
-def post_to_twitter(image_path: str, status: str):
-    """Post an image with status to Twitter."""
-    try:
-        auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
-        auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-        twitter_api = tweepy.API(auth)
-
-        media = twitter_api.media_upload(image_path)
-        twitter_api.update_status(status=status, media_ids=[media.media_id])
-        print("Tweet posted successfully!")
-        return True
-    except Exception as e:
-        print(f"Error posting to Twitter: {e}")
-        return False
-
-@bot.event
-async def on_ready():
-    print(f"We have logged in as {bot.user}")
-
 @bot.slash_command(name="action_card", description="Generate and optionally share an Action Card.")
 async def action_card(interaction: Interaction):
-    """Generate and share an action card."""
     try:
+        # Acknowledge the interaction
         await interaction.response.defer()
 
+        # Fetch the image from the raw URL
         image = fetch_image_from_url(IMAGE_URL)
         if not image:
             await interaction.followup.send("Failed to load the action card image.")
             return
 
-        price_data = await fetch_price_data()
+        # Fetch price data
+        price_data = await fetch_price_data()  # Properly await the coroutine
         if not price_data:
             await interaction.followup.send("Failed to fetch price data.")
             return
 
+        # Draw on the image
         output_path = draw_action_card(image, OUTPUT_PATH, price_data)
         if not output_path:
             await interaction.followup.send("Error generating the action card.")
             return
 
+        # Send the action card with a Share button
         if os.path.exists(output_path):
             file = nextcord.File(output_path, filename="action_card.png")
 
             class ShareButton(View):
                 def __init__(self):
-                    super().__init__(timeout=300)
+                    super().__init__(timeout=300)  # Buttons expire after 5 minutes
                     self.add_item(Button(label="Share to Twitter", style=nextcord.ButtonStyle.primary, custom_id="share_button"))
 
                 @staticmethod
                 async def share_callback(interaction: Interaction):
+                    print("Button callback triggered.")  # Log the interaction
                     try:
+                        print(f"Interaction user: {interaction.user.id}")  # Log user ID
                         if post_to_twitter(OUTPUT_PATH, "🚀 Check out Akita's performance!"):
+                            print("Tweet posted successfully.")
                             await interaction.response.send_message("Tweet successfully posted!", ephemeral=True)
                         else:
+                            print("Tweet posting failed.")
                             await interaction.response.send_message("Failed to post tweet.", ephemeral=True)
                     except Exception as e:
                         print(f"Error in callback: {e}")
                         await interaction.response.send_message("Error occurred while sharing.", ephemeral=True)
 
-            view = ShareButton()
+            view = ShareButton()  # Attach the share button view
             await interaction.followup.send("Here is your Action Card:", file=file, view=view)
         else:
             await interaction.followup.send("Output image not found.")
